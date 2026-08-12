@@ -1,0 +1,84 @@
+name: Daily Study Check-in Issue
+
+on:
+  schedule:
+    - cron: '0 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  create-daily-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "today=$(date -u +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Create daily check-in issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const today = '${{ steps.date.outputs.today }}';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = `Study Check-in ${today}`;
+
+            const existing = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const found = existing.data.find(issue => issue.title === title);
+            if (found) {
+              core.info(`Issue already exists: #${found.number}`);
+              return;
+            }
+
+            const body = [
+              `# 每日打卡 - ${today}`,
+              '',
+              '## 今日目标',
+              '- [ ] ',
+              '- [ ] ',
+              '- [ ] ',
+              '',
+              '## 今日学习内容',
+              '- ',
+              '- ',
+              '- ',
+              '',
+              '## 今日输出',
+              '- [ ] 笔记',
+              '- [ ] 图示',
+              '- [ ] 问答提纲',
+              '- [ ] 模拟表达',
+              '',
+              '## 今日掌握的关键点',
+              '1. ',
+              '2. ',
+              '3. ',
+              '',
+              '## 今日还不清楚的问题',
+              '1. ',
+              '2. ',
+              '3. ',
+              '',
+              '## 明日计划',
+              '- [ ] ',
+              '- [ ] ',
+              '- [ ] '
+            ].join('\n');
+
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body,
+              labels: ['study-checkin']
+            });
